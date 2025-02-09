@@ -26,44 +26,42 @@
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
         .picker {
-            height: 200px;
+            height: 300px;
             overflow: hidden;
             text-align: center;
             position: relative;
         }
-        #bookPicker { width: 150px; }
-        #chapterPicker, #versePicker { width: 80px; }
+        #bookPicker { width: 200px; }
+        #chapterPicker, #versePicker { width: 100px; }
         .picker-list {
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
-            transition: transform 0.3s ease-out; /* Changed to include all properties */
+            transition: transform 0.3s ease-out;
         }
         .picker-item {
-            height: 40px;
-            line-height: 40px;
-            font-family: Arial Narrow, sans-serif;
-            color: #000;
-            font-size: 16px;
+            height: 60px;
+            line-height: 60px;
+            font-family: Arial, sans-serif;
+            color: #888;
+            font-size: 24px;
             user-select: none;
             -webkit-user-select: none;
             -moz-user-select: none;
             -ms-user-select: none;
-            opacity: 0.3;
-            transition: opacity 0.3s;
-            /*text-shadow: 1px 1px 2px #ccc;*/ /* subtle shadow */
+            transition: color 0.3s, font-weight 0.3s;
         }
         .picker-item.selected {
-            opacity: 1;
-            /*font-weight: bold;*/ /* Emphasize selected */
+            color: #000;
+            font-weight: bold;
         }
         .picker::before, .picker::after {
             content: '';
             position: absolute;
             left: 0;
             right: 0;
-            height: 80px;
+            height: 120px;
             pointer-events: none;
             z-index: 1;
         }
@@ -81,7 +79,7 @@
             left: 0;
             right: 0;
             top: 50%;
-            height: 40px;
+            height: 60px;
             transform: translateY(-50%);
             background-color: rgba(0, 0, 0, 0.1);
             pointer-events: none;
@@ -102,53 +100,42 @@
     </div>
 
     <script>
-        const books = [
-            "Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy",
-            "Joshua", "Judges", "Ruth", "1 Samuel", "2 Samuel",
-            "1 Kings", "2 Kings", "1 Chronicles", "2 Chronicles", "Ezra",
-            "Nehemiah", "Esther", "Job", "Psalms", "Proverbs",
-            "Ecclesiastes", "Song of Solomon", "Isaiah", "Jeremiah", "Lamentations",
-            "Ezekiel", "Daniel", "Hosea", "Joel", "Amos",
-            "Obadiah", "Jonah", "Micah", "Nahum", "Habakkuk",
-            "Zephaniah", "Haggai", "Zechariah", "Malachi",
-            "Matthew", "Mark", "Luke", "John", "Acts",
-            "Romans", "1 Corinthians", "2 Corinthians", "Galatians", "Ephesians",
-            "Philippians", "Colossians", "1 Thessalonians", "2 Thessalonians", "1 Timothy",
-            "2 Timothy", "Titus", "Philemon", "Hebrews", "James",
-            "1 Peter", "2 Peter", "1 John", "2 John", "3 John",
-            "Jude", "Revelation"
-        ];
+        let bibleStructure;
 
-        const chapterCounts = {
-            "Genesis": 50, "Exodus": 40, "Leviticus": 27, "Numbers": 36, "Deuteronomy": 34,
-            "Joshua": 24, "Judges": 21, "Ruth": 4, "1 Samuel": 31, "2 Samuel": 24,
-            "1 Kings": 22, "2 Kings": 25, "1 Chronicles": 29, "2 Chronicles": 36, "Ezra": 10,
-            "Nehemiah": 13, "Esther": 10, "Job": 42, "Psalms": 150, "Proverbs": 31,
-            "Ecclesiastes": 12, "Song of Solomon": 8, "Isaiah": 66, "Jeremiah": 52, "Lamentations": 5,
-            "Ezekiel": 48, "Daniel": 12, "Hosea": 14, "Joel": 3, "Amos": 9,
-            "Obadiah": 1, "Jonah": 4, "Micah": 7, "Nahum": 3, "Habakkuk": 3,
-            "Zephaniah": 3, "Haggai": 2, "Zechariah": 14, "Malachi": 4,
-            "Matthew": 28, "Mark": 16, "Luke": 24, "John": 21, "Acts": 28,
-            "Romans": 16, "1 Corinthians": 16, "2 Corinthians": 13, "Galatians": 6, "Ephesians": 6,
-            "Philippians": 4, "Colossians": 4, "1 Thessalonians": 5, "2 Thessalonians": 3, "1 Timothy": 6,
-            "2 Timothy": 4, "Titus": 3, "Philemon": 1, "Hebrews": 13, "James": 5,
-            "1 Peter": 5, "2 Peter": 3, "1 John": 5, "2 John": 1, "3 John": 1,
-            "Jude": 1, "Revelation": 22
-        };
+        fetch('kjv.json')
+            .then(response => response.json())
+            .then(data => {
+                bibleStructure = processData(data.resultset.row);
+                initializePickers();
+            })
+            .catch(error => console.error('Error loading Bible data:', error));
 
-        // Placeholder for actual verse counts.  REPLACE THIS WITH REAL DATA!
-        const verseCounts = {
-            "Genesis": { 1: 31, 2: 25, 3: 24, 4: 26, 5: 32, 6: 22, 7: 24, 8: 22, 9: 29, 10: 32, 11: 32, 12: 20, 13: 18, 14: 24, 15: 21, 16: 16, 17: 27, 18: 33, 19: 38, 20: 18, 21: 34, 22: 24, 23: 20, 24: 67, 25: 34, 26: 35, 27: 46, 28: 22, 29: 35, 30: 43, 31: 55, 32: 32, 33: 20, 34: 31, 35: 29, 36: 43, 37: 36, 38: 30, 39: 23, 40: 23, 41: 57, 42: 38, 43: 34, 44: 34, 45: 28, 46: 27, 47: 31, 48: 22, 49: 33, 50: 26 },
-            "Exodus": { 1: 22, 2: 25, 3: 22, 4: 31, 5: 23, 6: 30, 7: 25, 8: 32, 9: 35, 10: 29, 11: 10, 12: 51, 13: 22, 14: 31, 15: 27, 16: 36, 17: 16, 18: 27, 19: 25, 20: 26, 21: 36, 22: 31, 23: 33, 24: 18, 25: 40, 26: 37, 27: 21, 28: 43, 29: 46, 30: 38, 31: 18, 32: 35, 33: 23, 34: 35, 35: 35, 36: 38, 37: 29, 38: 31, 39: 43, 40: 38 },
-        };
+        function processData(data) {
+            const structure = {};
+            data.forEach(verse => {
+                const [id, book, chapter, verseNum, text] = verse.field;
+                if (!structure[book]) {
+                    structure[book] = {};
+                }
+                if (!structure[book][chapter]) {
+                    structure[book][chapter] = [];
+                }
+                structure[book][chapter].push(verseNum);
+            });
+            return structure;
+        }
 
+        function initializePickers() {
+            const books = Object.keys(bibleStructure);
+            createPicker(document.getElementById('bookPicker'), books);
+            updateChapters(books[0]);
+        }
 
         function createPicker(element, items) {
             const list = element.querySelector('.picker-list');
-            const itemHeight = 40;
+            const itemHeight = 60;
             const paddingItems = 2;
 
-            // Initialize the picker with all the required list items
             const paddedItems = items.slice(-paddingItems).concat(items, items.slice(0, paddingItems));
             list.innerHTML = paddedItems.map(item => `<div class="picker-item">${item}</div>`).join('');
 
@@ -158,48 +145,51 @@
             let animationFrame;
             list.style.transform = `translateY(${currentTranslate}px)`;
 
-
             function updatePickerPosition() {
                 list.style.transform = `translateY(${currentTranslate}px)`;
-                // Update selected class
                 const selectedIndex = Math.round(-currentTranslate / itemHeight) - paddingItems;
                 const itemsElements = list.querySelectorAll('.picker-item');
                 itemsElements.forEach((item, index) => {
                     item.classList.toggle('selected', index === selectedIndex + paddingItems);
                 });
+
+                // Update other pickers based on selection
+                if (element.id === 'bookPicker') {
+                    updateChapters(items[selectedIndex]);
+                } else if (element.id === 'chapterPicker') {
+                    const selectedBook = document.querySelector('#bookPicker .picker-item.selected').textContent;
+                    updateVerses(selectedBook, items[selectedIndex]);
+                }
             }
 
             function snapToItem() {
-                velocity = 0;  // Kill any existing velocity
+                velocity = 0;
                 let itemIndex = Math.round(-currentTranslate / itemHeight) - paddingItems;
                 itemIndex = (itemIndex + items.length) % items.length;
                 currentTranslate = -(itemIndex + paddingItems) * itemHeight;
                 list.style.transition = 'transform 0.3s ease-out';
-                updatePickerPosition();  // Keep selected item highlighted
+                updatePickerPosition();
                 setTimeout(() => {
                     list.style.transition = '';
                 }, 300);
             }
 
-
             element.addEventListener('touchstart', e => {
                 startY = e.touches[0].clientY - currentTranslate;
-                list.style.transition = '';  // Remove transition during touch
-                velocity = 0;                // Reset velocity
-                lastY = e.touches[0].clientY; // Reset last position
-                cancelAnimationFrame(animationFrame); // Stop momentum scrolling
-
+                list.style.transition = '';
+                velocity = 0;
+                lastY = e.touches[0].clientY;
+                cancelAnimationFrame(animationFrame);
             });
 
             element.addEventListener('touchmove', e => {
-                e.preventDefault(); // Prevent scrolling the page
+                e.preventDefault();
                 const currentY = e.touches[0].clientY;
-                velocity = currentY - lastY; // Track movement for velocity
-                lastY = currentY;             // Update last position
-                currentTranslate = currentY - startY;  // Direct manipulation
-                updatePickerPosition();                // Keep the display updated
+                velocity = currentY - lastY;
+                lastY = currentY;
+                currentTranslate = currentY - startY;
+                updatePickerPosition();
             });
-
 
             element.addEventListener('touchend', () => {
                 function momentumScroll() {
@@ -209,48 +199,33 @@
                     if (Math.abs(velocity) > 0.5) {
                         animationFrame = requestAnimationFrame(momentumScroll);
                     } else {
-                        snapToItem();  // Snap when slow
+                        snapToItem();
                     }
                 }
                 momentumScroll();
             });
 
-            // Mousewheel scrolling
             element.addEventListener('wheel', (e) => {
                 e.preventDefault();
                 const delta = Math.sign(e.deltaY);
-                currentTranslate -= delta * itemHeight;  // Change direction
+                currentTranslate -= delta * itemHeight;
                 updatePickerPosition();
-                snapToItem();                          // Snap after each "click"
-
+                snapToItem();
             });
-            updatePickerPosition();  // Update on creation to highlight initial selection
 
-
+            updatePickerPosition();
         }
 
-
         function updateChapters(book) {
-            const chapters = Array.from({length: chapterCounts[book]}, (_, i) => i + 1);
+            const chapters = Object.keys(bibleStructure[book]);
             createPicker(document.getElementById('chapterPicker'), chapters);
-            updateVerses(book, 1);
+            updateVerses(book, chapters[0]);
         }
 
         function updateVerses(book, chapter) {
-            const verses = Array.from({length: (verseCounts[book] && verseCounts[book][chapter]) || 30}, (_, i) => i + 1);  // Use real verse count, default to 30
-
+            const verses = bibleStructure[book][chapter];
             createPicker(document.getElementById('versePicker'), verses);
         }
-
-
-
-        // Initialize the pickers
-        createPicker(document.getElementById('bookPicker'), books);
-        updateChapters('Genesis');
-        updateVerses('Genesis', 1);
-
-
-
     </script>
 </body>
 </html>
