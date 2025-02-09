@@ -26,23 +26,37 @@
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
         .picker {
-            width: 100px;
             height: 200px;
             overflow: hidden;
             text-align: center;
             position: relative;
         }
+        #bookPicker { width: 150px; }
+        #chapterPicker, #versePicker { width: 80px; }
         .picker-list {
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
-            transition: transform 0.3s ease-out;
+            transition: transform 0.3s ease-out; /* Changed to include all properties */
         }
         .picker-item {
             height: 40px;
             line-height: 40px;
+            font-family: Arial Narrow, sans-serif;
+            color: #000;
             font-size: 16px;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            opacity: 0.3;
+            transition: opacity 0.3s;
+            /*text-shadow: 1px 1px 2px #ccc;*/ /* subtle shadow */
+        }
+        .picker-item.selected {
+            opacity: 1;
+            /*font-weight: bold;*/ /* Emphasize selected */
         }
         .picker::before, .picker::after {
             content: '';
@@ -61,7 +75,7 @@
             bottom: 0;
             background: linear-gradient(to top, rgba(255,255,255,1), rgba(255,255,255,0));
         }
-        .picker::after {
+        .picker::selection-indicator {
             content: '';
             position: absolute;
             left: 0;
@@ -122,48 +136,99 @@
             "Jude": 1, "Revelation": 22
         };
 
+        // Placeholder for actual verse counts.  REPLACE THIS WITH REAL DATA!
+        const verseCounts = {
+            "Genesis": { 1: 31, 2: 25, 3: 24, 4: 26, 5: 32, 6: 22, 7: 24, 8: 22, 9: 29, 10: 32, 11: 32, 12: 20, 13: 18, 14: 24, 15: 21, 16: 16, 17: 27, 18: 33, 19: 38, 20: 18, 21: 34, 22: 24, 23: 20, 24: 67, 25: 34, 26: 35, 27: 46, 28: 22, 29: 35, 30: 43, 31: 55, 32: 32, 33: 20, 34: 31, 35: 29, 36: 43, 37: 36, 38: 30, 39: 23, 40: 23, 41: 57, 42: 38, 43: 34, 44: 34, 45: 28, 46: 27, 47: 31, 48: 22, 49: 33, 50: 26 },
+            "Exodus": { 1: 22, 2: 25, 3: 22, 4: 31, 5: 23, 6: 30, 7: 25, 8: 32, 9: 35, 10: 29, 11: 10, 12: 51, 13: 22, 14: 31, 15: 27, 16: 36, 17: 16, 18: 27, 19: 25, 20: 26, 21: 36, 22: 31, 23: 33, 24: 18, 25: 40, 26: 37, 27: 21, 28: 43, 29: 46, 30: 38, 31: 18, 32: 35, 33: 23, 34: 35, 35: 35, 36: 38, 37: 29, 38: 31, 39: 43, 40: 38 },
+        };
+
+
         function createPicker(element, items) {
             const list = element.querySelector('.picker-list');
             const itemHeight = 40;
             const paddingItems = 2;
 
-            list.innerHTML = 
-                items.slice(-paddingItems).map(item => `<div class="picker-item">${item}</div>`).join('') +
-                items.map(item => `<div class="picker-item">${item}</div>`).join('') +
-                items.slice(0, paddingItems).map(item => `<div class="picker-item">${item}</div>`).join('');
-            
+            // Initialize the picker with all the required list items
+            const paddedItems = items.slice(-paddingItems).concat(items, items.slice(0, paddingItems));
+            list.innerHTML = paddedItems.map(item => `<div class="picker-item">${item}</div>`).join('');
+
             let startY, currentTranslate = -paddingItems * itemHeight;
+            let velocity = 0;
+            let lastY = 0;
+            let animationFrame;
             list.style.transform = `translateY(${currentTranslate}px)`;
 
-            element.addEventListener('touchstart', e => {
-                startY = e.touches[0].clientY - currentTranslate;
-                list.style.transition = '';
-            });
 
-            element.addEventListener('touchmove', e => {
-                const currentY = e.touches[0].clientY;
-                currentTranslate = currentY - startY;
+            function updatePickerPosition() {
                 list.style.transform = `translateY(${currentTranslate}px)`;
-            });
+                // Update selected class
+                const selectedIndex = Math.round(-currentTranslate / itemHeight) - paddingItems;
+                const itemsElements = list.querySelectorAll('.picker-item');
+                itemsElements.forEach((item, index) => {
+                    item.classList.toggle('selected', index === selectedIndex + paddingItems);
+                });
+            }
 
-            element.addEventListener('touchend', () => {
+            function snapToItem() {
+                velocity = 0;  // Kill any existing velocity
                 let itemIndex = Math.round(-currentTranslate / itemHeight) - paddingItems;
                 itemIndex = (itemIndex + items.length) % items.length;
                 currentTranslate = -(itemIndex + paddingItems) * itemHeight;
                 list.style.transition = 'transform 0.3s ease-out';
-                list.style.transform = `translateY(${currentTranslate}px)`;
-                
+                updatePickerPosition();  // Keep selected item highlighted
                 setTimeout(() => {
                     list.style.transition = '';
                 }, 300);
+            }
 
-                if (element.id === 'bookPicker') {
-                    updateChapters(items[itemIndex]);
-                } else if (element.id === 'chapterPicker') {
-                    updateVerses(books[Math.round(-document.querySelector('#bookPicker .picker-list').style.transform.slice(11, -3) / itemHeight) - paddingItems], itemIndex + 1);
-                }
+
+            element.addEventListener('touchstart', e => {
+                startY = e.touches[0].clientY - currentTranslate;
+                list.style.transition = '';  // Remove transition during touch
+                velocity = 0;                // Reset velocity
+                lastY = e.touches[0].clientY; // Reset last position
+                cancelAnimationFrame(animationFrame); // Stop momentum scrolling
+
             });
+
+            element.addEventListener('touchmove', e => {
+                e.preventDefault(); // Prevent scrolling the page
+                const currentY = e.touches[0].clientY;
+                velocity = currentY - lastY; // Track movement for velocity
+                lastY = currentY;             // Update last position
+                currentTranslate = currentY - startY;  // Direct manipulation
+                updatePickerPosition();                // Keep the display updated
+            });
+
+
+            element.addEventListener('touchend', () => {
+                function momentumScroll() {
+                    velocity *= 0.95;
+                    currentTranslate += velocity;
+                    updatePickerPosition();
+                    if (Math.abs(velocity) > 0.5) {
+                        animationFrame = requestAnimationFrame(momentumScroll);
+                    } else {
+                        snapToItem();  // Snap when slow
+                    }
+                }
+                momentumScroll();
+            });
+
+            // Mousewheel scrolling
+            element.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const delta = Math.sign(e.deltaY);
+                currentTranslate -= delta * itemHeight;  // Change direction
+                updatePickerPosition();
+                snapToItem();                          // Snap after each "click"
+
+            });
+            updatePickerPosition();  // Update on creation to highlight initial selection
+
+
         }
+
 
         function updateChapters(book) {
             const chapters = Array.from({length: chapterCounts[book]}, (_, i) => i + 1);
@@ -172,13 +237,20 @@
         }
 
         function updateVerses(book, chapter) {
-            const verses = Array.from({length: 30}, (_, i) => i + 1);  // Assuming 30 verses per chapter for simplicity
+            const verses = Array.from({length: (verseCounts[book] && verseCounts[book][chapter]) || 30}, (_, i) => i + 1);  // Use real verse count, default to 30
+
             createPicker(document.getElementById('versePicker'), verses);
         }
 
+
+
+        // Initialize the pickers
         createPicker(document.getElementById('bookPicker'), books);
         updateChapters('Genesis');
         updateVerses('Genesis', 1);
+
+
+
     </script>
 </body>
 </html>
