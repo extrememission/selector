@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Bible Verse Selector</title>
     <style>
         body {
@@ -13,6 +13,10 @@
             height: 100vh;
             margin: 0;
             background-color: #f0f0f0;
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
         }
         .picker-container {
             display: flex;
@@ -56,6 +60,17 @@
         .picker::after {
             bottom: 0;
             background: linear-gradient(to top, rgba(255,255,255,1), rgba(255,255,255,0));
+        }
+        .picker::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 50%;
+            height: 40px;
+            transform: translateY(-50%);
+            background-color: rgba(0, 0, 0, 0.1);
+            pointer-events: none;
         }
     </style>
 </head>
@@ -109,13 +124,20 @@
 
         function createPicker(element, items) {
             const list = element.querySelector('.picker-list');
-            list.innerHTML = items.map(item => `<div class="picker-item">${item}</div>`).join('');
-            
-            let startY, currentTranslate = 0;
             const itemHeight = 40;
+            const paddingItems = 2;
+
+            list.innerHTML = 
+                items.slice(-paddingItems).map(item => `<div class="picker-item">${item}</div>`).join('') +
+                items.map(item => `<div class="picker-item">${item}</div>`).join('') +
+                items.slice(0, paddingItems).map(item => `<div class="picker-item">${item}</div>`).join('');
+            
+            let startY, currentTranslate = -paddingItems * itemHeight;
+            list.style.transform = `translateY(${currentTranslate}px)`;
 
             element.addEventListener('touchstart', e => {
                 startY = e.touches[0].clientY - currentTranslate;
+                list.style.transition = '';
             });
 
             element.addEventListener('touchmove', e => {
@@ -125,14 +147,20 @@
             });
 
             element.addEventListener('touchend', () => {
-                const itemIndex = Math.round(-currentTranslate / itemHeight);
-                currentTranslate = -itemIndex * itemHeight;
+                let itemIndex = Math.round(-currentTranslate / itemHeight) - paddingItems;
+                itemIndex = (itemIndex + items.length) % items.length;
+                currentTranslate = -(itemIndex + paddingItems) * itemHeight;
+                list.style.transition = 'transform 0.3s ease-out';
                 list.style.transform = `translateY(${currentTranslate}px)`;
                 
+                setTimeout(() => {
+                    list.style.transition = '';
+                }, 300);
+
                 if (element.id === 'bookPicker') {
                     updateChapters(items[itemIndex]);
                 } else if (element.id === 'chapterPicker') {
-                    updateVerses(books[Math.round(-document.querySelector('#bookPicker .picker-list').style.transform.slice(11, -3) / itemHeight)], itemIndex + 1);
+                    updateVerses(books[Math.round(-document.querySelector('#bookPicker .picker-list').style.transform.slice(11, -3) / itemHeight) - paddingItems], itemIndex + 1);
                 }
             });
         }
@@ -144,13 +172,13 @@
         }
 
         function updateVerses(book, chapter) {
-            // This is a simplified version. In reality, you'd need a more complex data structure to know the exact verse count for each chapter.
             const verses = Array.from({length: 30}, (_, i) => i + 1);  // Assuming 30 verses per chapter for simplicity
             createPicker(document.getElementById('versePicker'), verses);
         }
 
         createPicker(document.getElementById('bookPicker'), books);
         updateChapters('Genesis');
+        updateVerses('Genesis', 1);
     </script>
 </body>
 </html>
