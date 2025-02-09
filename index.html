@@ -7,23 +7,21 @@
     <style>
         body {
             font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
             height: 100vh;
-            margin: 0;
-            background-color: #f0f0f0;
-            overflow: hidden;
-            position: fixed;
-            width: 100%;
-            height: 100%;
         }
         .picker-container {
             display: flex;
             overflow: hidden;
             background-color: #fff;
-            border-radius: 10px;
+            border-radius: 0 0 10px 10px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin-top: 0;
         }
         .picker {
             height: 300px;
@@ -84,8 +82,16 @@
             background-color: rgba(0, 0, 0, 0.1);
             pointer-events: none;
         }
-
-        /* Error Message Styling */
+        #verse-display {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            max-width: 80%;
+            text-align: center;
+            font-size: 18px;
+        }
         #error-message {
             color: red;
             font-size: 1.2em;
@@ -106,12 +112,12 @@
             <div class="picker-list"></div>
         </div>
     </div>
-
-    <!-- Error Message Display -->
+    <div id="verse-display"></div>
     <div id="error-message"></div>
 
     <script>
         let bibleStructure;
+        let bibleVerses;
 
         function displayError(message) {
             document.getElementById('error-message').textContent = message;
@@ -126,7 +132,9 @@
             })
             .then(data => {
                 try {
-                    bibleStructure = processData(data.resultset.row);
+                    const result = processData(data.resultset.row);
+                    bibleStructure = result.structure;
+                    bibleVerses = result.verses;
                     initializePickers();
                 } catch (e) {
                     console.error("Error processing data:", e);
@@ -140,6 +148,7 @@
 
         function processData(data) {
             const structure = {};
+            const verses = {};
             try {
                 data.forEach(verse => {
                     const [id, book, chapter, verseNum, text] = verse.field;
@@ -150,17 +159,25 @@
                         structure[book][chapter] = [];
                     }
                     structure[book][chapter].push(verseNum);
+                    
+                    if (!verses[book]) {
+                        verses[book] = {};
+                    }
+                    if (!verses[book][chapter]) {
+                        verses[book][chapter] = {};
+                    }
+                    verses[book][chapter][verseNum] = text;
                 });
             } catch (e) {
                 console.error("Error inside processData:", e);
                 throw new Error("Error processing data. Possible format issue with kjv.json.");
             }
-            return structure;
+            return { structure, verses };
         }
 
         function initializePickers() {
             const books = Object.keys(bibleStructure);
-             if (!books || books.length === 0) {
+            if (!books || books.length === 0) {
                 displayError("No books found in the Bible data.");
                 return;
             }
@@ -169,52 +186,44 @@
             updateChapters(books[0]);
         }
 
-       function createPicker(element, items) {
-        const list = element.querySelector('.picker-list');
-        const itemHeight = 60;
-        const paddingItems = 2;
+        function createPicker(element, items) {
+            const list = element.querySelector('.picker-list');
+            const itemHeight = 60;
+            const paddingItems = 2;
 
-        const paddedItems = items.slice(-paddingItems).concat(items, items.slice(0, paddingItems));
-        list.innerHTML = paddedItems.map(item => `<div class="picker-item">${item}</div>`).join('');
+            const paddedItems = items.slice(-paddingItems).concat(items, items.slice(0, paddingItems));
+            list.innerHTML = paddedItems.map(item => `<div class="picker-item">${item}</div>`).join('');
 
-        let startY, currentTranslate = -paddingItems * itemHeight;
-        let velocity = 0;
-        let lastY = 0;
-        let animationFrame;
-        list.style.transform = `translateY(${currentTranslate}px)`;
-
-        function updatePickerPosition() {
+            let startY, currentTranslate = -paddingItems * itemHeight;
+            let velocity = 0;
+            let lastY = 0;
+            let animationFrame;
             list.style.transform = `translateY(${currentTranslate}px)`;
-            const selectedIndex = Math.round(-currentTranslate / itemHeight) - paddingItems;
-            const itemsElements = list.querySelectorAll('.picker-item');
-            itemsElements.forEach((item, index) => {
-                item.classList.toggle('selected', index === selectedIndex + paddingItems);
-            });
 
-            // Update other pickers based on selection
-            if (element.id === 'bookPicker') {
-                // Check if selectedIndex is within valid range before accessing items[selectedIndex]
-                if (selectedIndex >= 0 && selectedIndex < items.length) {
-                    updateChapters(items[selectedIndex]);
-                } else {
-                    console.error('selectedIndex out of range for bookPicker:', selectedIndex);
-                }
-            } else if (element.id === 'chapterPicker') {
-                const selectedBookElement = document.querySelector('#bookPicker .picker-item.selected');
-                if (selectedBookElement) {
-                    const selectedBook = selectedBookElement.textContent;
-                    // Check if selectedIndex is within valid range before accessing items[selectedIndex]
+            function updatePickerPosition() {
+                list.style.transform = `translateY(${currentTranslate}px)`;
+                const selectedIndex = Math.round(-currentTranslate / itemHeight) - paddingItems;
+                const itemsElements = list.querySelectorAll('.picker-item');
+                itemsElements.forEach((item, index) => {
+                    item.classList.toggle('selected', index === selectedIndex + paddingItems);
+                });
+
+                if (element.id === 'bookPicker') {
                     if (selectedIndex >= 0 && selectedIndex < items.length) {
-                        updateVerses(selectedBook, items[selectedIndex]);
-                    } else {
-                        console.error('selectedIndex out of range for chapterPicker:', selectedIndex);
+                        updateChapters(items[selectedIndex]);
                     }
-                } else {
-                    console.warn('No book selected when updating chapterPicker');
+                } else if (element.id === 'chapterPicker') {
+                    const selectedBookElement = document.querySelector('#bookPicker .picker-item.selected');
+                    if (selectedBookElement) {
+                        const selectedBook = selectedBookElement.textContent;
+                        if (selectedIndex >= 0 && selectedIndex < items.length) {
+                            updateVerses(selectedBook, items[selectedIndex]);
+                        }
+                    }
+                } else if (element.id === 'versePicker') {
+                    updateVerseDisplay();
                 }
             }
-        }
-
 
             function snapToItem() {
                 velocity = 0;
@@ -270,9 +279,8 @@
             updatePickerPosition();
         }
 
-
         function updateChapters(book) {
-             if (!bibleStructure[book]) {
+            if (!bibleStructure[book]) {
                 console.warn(`No chapters found for book: ${book}`);
                 return;
             }
@@ -282,12 +290,22 @@
         }
 
         function updateVerses(book, chapter) {
-             if (!bibleStructure[book] || !bibleStructure[book][chapter]) {
+            if (!bibleStructure[book] || !bibleStructure[book][chapter]) {
                 console.warn(`No verses found for book: ${book}, chapter: ${chapter}`);
                 return;
             }
             const verses = bibleStructure[book][chapter];
             createPicker(document.getElementById('versePicker'), verses);
+            updateVerseDisplay();
+        }
+
+        function updateVerseDisplay() {
+            const selectedBook = document.querySelector('#bookPicker .picker-item.selected').textContent;
+            const selectedChapter = document.querySelector('#chapterPicker .picker-item.selected').textContent;
+            const selectedVerse = document.querySelector('#versePicker .picker-item.selected').textContent;
+            
+            const verseText = bibleVerses[selectedBook][selectedChapter][selectedVerse];
+            document.getElementById('verse-display').textContent = `${selectedBook} ${selectedChapter}:${selectedVerse} - ${verseText}`;
         }
     </script>
 </body>
